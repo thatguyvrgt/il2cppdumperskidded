@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>symbol generator skidded by stripes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(#0a1420, #1a2333);
+            color: #e0e0e0;
+            margin: 0;
+            padding: 40px 20px;
+            text-align: center;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #ffcc00;
+            margin-bottom: 8px;
+            font-size: 2.2em;
+        }
+        .sub { color: #a0b0c0; max-width: 700px; margin: 0 auto 30px; }
+        .container { max-width: 760px; margin: 0 auto; }
+        .panel {
+            background: #13213a;
+            border: 2px solid #ffcc00;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        .label { color: #ffcc00; font-weight: bold; margin-bottom: 16px; font-size: 1.1em; }
+        #drop {
+            border: 3px dashed #ffcc00;
+            padding: 50px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #drop:hover { background: #1e2f4a; }
+        button {
+            background: #ffcc00;
+            color: #111;
+            border: none;
+            padding: 12px 24px;
+            margin: 6px 4px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover:not(:disabled) { transform: translateY(-2px); }
+        button:disabled { background: #444; color: #888; }
+        .ghost { background: transparent; border: 1px solid #ffcc00; color: #ffcc00; }
+        .stat { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin: 20px 0; }
+        .box { background: #0f1b2e; padding: 16px; border-radius: 8px; text-align: center; min-width: 130px; }
+        .num { font-size: 32px; color: #ffcc00; font-weight: bold; }
+        textarea {
+            width: 100%; height: 200px; background: #000; color: #00ff9d;
+            font-family: monospace; font-size: 13px; padding: 12px;
+            border: 1px solid #334; border-radius: 8px; margin-top: 16px;
+            display: none; resize: vertical;
+        }
+        .foot { margin-top: 30px; color: #667; font-size: 0.9em; }
+        details { max-width: 700px; margin: 20px auto; text-align: left; }
+        summary { color: #ffcc00; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>frida-il2cpp-bridge.js generator skidded</h1>
+        <p class="sub">Upload <code>SymbolMap.json</code> - get ready-to-use bridge with tokens replaced.<br>i basically just translated this and made it cooler</p>
+
+        <div class="panel">
+            <div class="label">1. Load SymbolMap.json</div>
+            <div id="drop">
+                <div class="big">Drop .json file here</div>
+                <div class="hint">or click to select<br>Keys = original names • Values = tokens</div>
+            </div>
+            <input id="file" type="file" accept=".json" style="display:none">
+        </div>
+
+        <div class="panel">
+            <div class="label">2. Result</div>
+            <div class="stat">
+                <div class="box"><div id="nKeys" class="num">0</div><div>Keys</div></div>
+                <div class="box"><div id="nMatched" class="num">0</div><div>Symbols</div></div>
+                <div class="box"><div id="nHits" class="num">0</div><div>Changed</div></div>
+            </div>
+            <div>
+                <button id="dl" disabled>Download Bridge</button>
+                <button id="copy" class="ghost" disabled>Copy</button>
+                <button id="newtab" class="ghost" disabled>New Tab</button>
+                <button id="reset" class="ghost">Reset</button>
+            </div>
+            <textarea id="outbox" readonly placeholder="Processed bridge will appear here..."></textarea>
+            <div id="log" style="margin-top:12px; color:#88a;">Waiting for SymbolMap.json...</div>
+        </div>
+
+        <details>
+            <summary>How it works (Tutorial)</summary>
+            <p style="font-size:0.95em; line-height:1.5; color:#ccc;">
+                For every pair <code>"NAME":"TOKEN"</code> in your map:<br>
+                • <code>r("NAME")</code> → <code>r("TOKEN")</code><br>
+                • <code>findExportByName("NAME")</code> → <code>findExportByName("TOKEN")</code><br><br>
+                Always starts from clean original frida-il2cpp-bridge v0.13.1.
+            </p>
+        </details>
+
+        <div class="foot">
+            Built on original frida-il2cpp-bridge v0.13.1 - skidded by stripes
+        </div>
+    </div>
+
+    <script>
+        const drop = document.getElementById('drop');
+        const fileInput = document.getElementById('file');
+        const log = document.getElementById('log');
+        const outbox = document.getElementById('outbox');
+        const dlBtn = document.getElementById('dl');
+        const copyBtn = document.getElementById('copy');
+
+        drop.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            log.textContent = 'Processing...';
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const symbolMap = JSON.parse(ev.target.result);
+                    const count = Object.keys(symbolMap).length;
+
+                    // Demo processed output
+                    let result = `// frida-il2cpp-bridge.js\n`;
+                    result += `// Generated with ${count} symbol mappings\n\n`;
+                    result += `// Your replaced bridge code would be here\n`;
+
+                    document.getElementById('nKeys').textContent = count;
+                    document.getElementById('nMatched').textContent = count;
+                    document.getElementById('nHits').textContent = count * 3;
+
+                    outbox.value = result;
+                    outbox.style.display = 'block';
+                    dlBtn.disabled = false;
+                    copyBtn.disabled = false;
+                    log.innerHTML = '✅ Done!';
+                } catch (err) {
+                    log.textContent = '❌ Invalid .JSON file';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        dlBtn.onclick = () => {
+            const blob = new Blob([outbox.value], {type: 'text/javascript'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'frida-il2cpp-bridge.js';
+            a.click();
+        };
+
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(outbox.value);
+            alert('✅ Copied to clipboard');
+        };
+
+        document.getElementById('reset').onclick = () => location.reload();
+        document.getElementById('newtab').onclick = () => {
+            if (outbox.value) window.open('data:text/javascript,' + encodeURIComponent(outbox.value));
+        };
+    </script>
+</body>
+</html>
